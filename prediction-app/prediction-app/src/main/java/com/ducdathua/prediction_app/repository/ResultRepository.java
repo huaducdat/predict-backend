@@ -11,6 +11,5 @@ import java.util.Optional;
 public interface ResultRepository extends JpaRepository<Result, Long> {
     List<Result> findAllByOrderByDateDesc();
     Optional<Result> findByDate(LocalDate date);
-
     boolean existsByDate(LocalDate date);
 }
