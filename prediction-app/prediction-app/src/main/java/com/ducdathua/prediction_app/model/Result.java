@@ -13,7 +13,7 @@ public class Result {
     @Id
     @GeneratedValue
     private Long id;
-    private String date;
+    private LocalDate date;
     private int singleNumber;
     @ElementCollection
     private List<Integer> numbers;
@@ -22,7 +22,7 @@ public class Result {
 
     }
 
-    public Result(String date, int singleNumber, List<Integer> numbers) {
+    public Result(LocalDate date, int singleNumber, List<Integer> numbers) {
         this.date = date;
         this.singleNumber = singleNumber;
         this.numbers = numbers;
@@ -32,7 +32,7 @@ public class Result {
         return id;
     }
 
-    public String getDate() {
+    public LocalDate getDate() {
         return date;
     }
 
@@ -48,7 +48,7 @@ public class Result {
         this.id = id;
     }
 
-    public void setDate(String date) {
+    public void setDate(LocalDate date) {
         this.date = date;
     }
 
