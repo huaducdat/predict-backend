@@ -1,4 +1,4 @@
-package com.ducdathua.prediction_app.model;
+package com.ducdathua.prediction_app.dto;
 
 public class NumberStreakResponse {
     private int number;

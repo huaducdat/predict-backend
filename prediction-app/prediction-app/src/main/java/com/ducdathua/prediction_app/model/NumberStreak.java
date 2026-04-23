@@ -9,7 +9,7 @@ import java.time.LocalDate;
 public class NumberStreak {
     @Id
     private int number;
-    private int currenStreak;
+    private int currentStreak;
     private int maxStreak;
 
     private LocalDate lastUpdated;
@@ -20,15 +20,15 @@ public class NumberStreak {
 
     public NumberStreak(int number, int currenStreak, int maxStreak, LocalDate lastUpdated) {
         this.number = number;
-        this.currenStreak = currenStreak;
+        this.currentStreak = currenStreak;
         this.maxStreak = maxStreak;
         this.lastUpdated = lastUpdated;
     }
     public int getNumber() {return number;}
-    public int getCurrenStreak() {return currenStreak;}
+    public int getCurrentStreak() {return currentStreak;}
     public int getMaxStreak() {return maxStreak;}
     public LocalDate getLastUpdated() {return lastUpdated;}
 
-    public void setCurrenStreak(int currenStreak) {this.currenStreak = currenStreak;}
+    public void setCurrentStreak(int currentStreak) {this.currentStreak = currentStreak;}
     public void setMaxStreak(int maxStreak) {this.maxStreak = maxStreak;}
 }

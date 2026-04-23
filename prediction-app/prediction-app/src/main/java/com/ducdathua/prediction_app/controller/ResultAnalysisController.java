@@ -1,14 +1,11 @@
 package com.ducdathua.prediction_app.controller;
 
-import com.ducdathua.prediction_app.model.NumberStreakResponse;
+import com.ducdathua.prediction_app.dto.NumberStreakResponse;
+import com.ducdathua.prediction_app.model.LatestDayStreak;
 import com.ducdathua.prediction_app.service.ResultAnalysisService;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/analysis")
@@ -24,4 +21,11 @@ public class ResultAnalysisController {
     public List<NumberStreakResponse> getLatestStreaks() {
         return service.getLatestDayStreaks();
     }
+
+//    @PostMapping("/rebuild")
+//    public String rebuild() {
+//        service.rebuildLatestDayStreaks();
+//        return "REBUILT";
+//    }
+
 }
