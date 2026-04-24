@@ -113,3 +113,32 @@ INSERT INTO `result_numbers` (result_id, numbers) VALUES
 (6,10),(6,11),(6,12),(6,13),(6,14),(6,15),(6,16),(6,17),(6,18),
 (6,19),(6,20),(6,21),(6,22),(6,23),(6,24),(6,25),(6,26),(6,27),
 (6,28);
+
+SET @id = 7;
+SET @date = '2026-04-08';
+
+-- loop giả bằng sequence
+INSERT INTO result (id, date, single_number)
+SELECT 
+    @id := @id + 1,
+    DATE_ADD(@date, INTERVAL t.n DAY),
+    CASE
+        WHEN t.n BETWEEN 0 AND 5 THEN 55
+        WHEN t.n BETWEEN 6 AND 10 THEN 22
+        WHEN t.n BETWEEN 11 AND 20 THEN 33
+        WHEN t.n BETWEEN 21 AND 25 THEN 77
+        WHEN t.n BETWEEN 26 AND 35 THEN 11
+        WHEN t.n BETWEEN 36 AND 45 THEN 44
+        WHEN t.n BETWEEN 46 AND 55 THEN 88
+        WHEN t.n BETWEEN 56 AND 65 THEN 66
+        WHEN t.n BETWEEN 66 AND 75 THEN 99
+        ELSE FLOOR(RAND()*100)
+    END
+FROM (
+    SELECT @row := @row + 1 AS n
+    FROM (SELECT 0 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) a,
+         (SELECT 0 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) b,
+         (SELECT 0 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) c,
+         (SELECT @row := -1) init
+    LIMIT 93
+) t;
