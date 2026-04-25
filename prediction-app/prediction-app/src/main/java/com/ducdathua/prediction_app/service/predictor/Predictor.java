@@ -6,10 +6,7 @@ import com.ducdathua.prediction_app.model.Result;
 import java.util.List;
 import java.util.Map;
 
-public interface Predictor {
-
-    // source -> list(top k với count)
-    Map<Integer, List<NumberScoreDto>> predict(List<Result> allResults);
-
+public interface Predictor<T> {
     String getName();
+    T predict(List<Result> allResults);
 }

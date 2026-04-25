@@ -9,7 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Component
-public class PositionPredictor implements Predictor {
+public class PositionPredictor implements Predictor<Map<Integer, List<NumberScoreDto>>>  {
 
     private static final int GROUP_SIZE = 10;
 

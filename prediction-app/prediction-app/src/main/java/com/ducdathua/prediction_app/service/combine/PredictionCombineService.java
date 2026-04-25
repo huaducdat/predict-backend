@@ -11,9 +11,9 @@ import java.util.*;
 @Service
 public class PredictionCombineService {
 
-    private final List<Predictor> predictors;
+    private final List<Predictor<?>> predictors;
 
-    public PredictionCombineService(List<Predictor> predictors) {
+    public PredictionCombineService(List<Predictor<?>> predictors) {
         this.predictors = predictors;
     }
 
@@ -30,7 +30,10 @@ public class PredictionCombineService {
 
         for (Predictor p : predictors) {
 
-            Map<Integer, List<NumberScoreDto>> raw = p.predict(allResults);
+            Object rawObj = p.predict(allResults);
+
+            Map<Integer, List<NumberScoreDto>> raw =
+                    convert(rawObj, p.getName());
 
             Map<Integer, Double> flat =
                     isContextPredictor(p.getName())
@@ -161,7 +164,7 @@ public class PredictionCombineService {
     // =========================
 
     private boolean isContextPredictor(String name) {
-        return name.equals("PAIR")
+        return name.equals("PAIR_TO_NEXT")
                 || name.equals("TIME_WEIGHTED_COUNT")
                 || name.equals("POSITION");
     }
@@ -220,5 +223,38 @@ public class PredictionCombineService {
                 .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
                 .map(e -> new NumberScoreDto(e.getKey(), e.getValue()))
                 .toList();
+    }
+
+    private Map<Integer, List<NumberScoreDto>> convert(Object raw, String name) {
+
+        // 🔥 case 1: predictor cũ
+        if (raw instanceof Map<?, ?> map) {
+            return (Map<Integer, List<NumberScoreDto>>) map;
+        }
+
+        // 🔥 case 2: PairPredictor
+        if (raw instanceof List<?> list && name.equals("PAIR_TO_NEXT")) {
+
+            Map<Integer, List<NumberScoreDto>> res = new HashMap<>();
+
+            for (Object obj : list) {
+                var pair = (com.ducdathua.prediction_app.dto.PairScoreDto) obj;
+
+                int pairKey = pair.getPairKey();
+                int a = pairKey / 100;
+                int b = pairKey % 100;
+
+                // 🔥 map về dạng context
+                res.putIfAbsent(a, new ArrayList<>());
+                res.putIfAbsent(b, new ArrayList<>());
+
+                res.get(a).addAll(pair.getNumbers());
+                res.get(b).addAll(pair.getNumbers());
+            }
+
+            return res;
+        }
+
+        throw new RuntimeException("Unsupported predictor: " + name);
     }
 }

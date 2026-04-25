@@ -9,7 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Component
-public class TimeWeightedScorePredictor implements Predictor {
+public class TimeWeightedScorePredictor implements Predictor<Map<Integer, List<NumberScoreDto>>>  {
 
     private static final int TOP_K = 3;
 

@@ -9,7 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Component
-public class RecentFrequencyPredictor implements Predictor {
+public class RecentFrequencyPredictor implements Predictor<Map<Integer, List<NumberScoreDto>>>  {
 
     private static final int TOP_K = 15;
 

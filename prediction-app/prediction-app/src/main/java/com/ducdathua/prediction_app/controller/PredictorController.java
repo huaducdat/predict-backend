@@ -20,7 +20,7 @@ public class PredictorController {
     }
 
     @GetMapping
-    public Map<String, Map<Integer, List<NumberScoreDto>>> getTop3Count() {
+    public Map<String, Object> getPredict() {
         return service.run();
     }
 }

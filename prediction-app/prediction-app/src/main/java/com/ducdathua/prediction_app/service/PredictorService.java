@@ -1,6 +1,5 @@
 package com.ducdathua.prediction_app.service;
 
-import com.ducdathua.prediction_app.dto.NumberScoreDto;
 import com.ducdathua.prediction_app.model.Result;
 import com.ducdathua.prediction_app.repository.ResultRepository;
 import com.ducdathua.prediction_app.service.predictor.Predictor;
@@ -15,30 +14,29 @@ import java.util.Map;
 public class PredictorService {
 
     private final ResultRepository resultRepository;
-    private final List<Predictor> predictors;
+    private final List<Predictor<?>> predictors;
 
     public PredictorService(ResultRepository resultRepository,
-                            List<Predictor> predictors) {
+                            List<Predictor<?>> predictors) {
         this.resultRepository = resultRepository;
         this.predictors = predictors;
     }
 
-    public Map<String, Map<Integer, List<NumberScoreDto>>> run() {
+    public Map<String, Object> run() {
 
         List<Result> allResults = resultRepository.findAll();
 
-        // 🔥 Defensive
-        if (allResults == null || allResults.size() < 2) {
+        if (allResults.size() < 2) {
             throw new RuntimeException("NOT_ENOUGH_DATA");
         }
 
-        // 🔥 Sort theo ngày
         allResults.sort(Comparator.comparing(Result::getDate));
 
-        Map<String, Map<Integer, List<NumberScoreDto>>> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<>();
 
-        for (Predictor p : predictors) {
-            result.put(p.getName(), p.predict(allResults));
+        for (Predictor<?> p : predictors) {
+            Object data = p.predict(allResults);
+            result.put(p.getName(), data);
         }
 
         return result;

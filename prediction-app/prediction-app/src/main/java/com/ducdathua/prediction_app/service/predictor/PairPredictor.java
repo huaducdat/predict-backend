@@ -1,6 +1,7 @@
 package com.ducdathua.prediction_app.service.predictor;
 
 import com.ducdathua.prediction_app.dto.NumberScoreDto;
+import com.ducdathua.prediction_app.dto.PairScoreDto;
 import com.ducdathua.prediction_app.model.Result;
 import org.springframework.stereotype.Component;
 
@@ -9,88 +10,114 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Component
-public class PairPredictor implements Predictor {
+public class PairPredictor implements Predictor<List<PairScoreDto>> {
 
-    private static final double W_30D = 0.5;
-    private static final double W_90D = 0.3;
-    private static final double W_180D = 0.2;
+    private static final double W_7D  = 0.4;
+    private static final double W_30D = 0.3;
+    private static final double W_90D = 0.2;
+    private static final double W_180D = 0.1;
 
     @Override
     public String getName() {
-        return "PAIR";
+        return "PAIR_TO_NEXT";
     }
 
     @Override
-    public Map<Integer, List<NumberScoreDto>> predict(List<Result> allResults) {
+    public List<PairScoreDto> predict(List<Result> allResults) {
 
         if (allResults == null || allResults.size() < 2) {
-            return Map.of();
+            return List.of(); // 🔥 FIX: không return Map nữa
         }
 
         allResults.sort(Comparator.comparing(Result::getDate));
 
-        LocalDate latestDate = allResults.get(allResults.size() - 1).getDate();
+        LocalDate latestDate =
+                allResults.get(allResults.size() - 1).getDate();
 
-        // 🔥 memory: A -> (B -> score)
-        Map<Integer, Map<Integer, Double>> memory = initMemory();
+        // 🔥 pairKey → (target → score)
+        Map<Integer, Map<Integer, Double>> memory = new HashMap<>();
 
         for (int i = 0; i < allResults.size() - 1; i++) {
 
             Result today = allResults.get(i);
             Result next = allResults.get(i + 1);
 
-            LocalDate date = today.getDate();
-            long daysDiff = ChronoUnit.DAYS.between(date, latestDate);
-
+            long daysDiff = ChronoUnit.DAYS.between(today.getDate(), latestDate);
             double weight = getWeight(daysDiff);
             if (weight == 0) continue;
 
-            Set<Integer> todaySet = new HashSet<>(today.getNumbers());
-            Set<Integer> nextSet = new HashSet<>(next.getNumbers());
+            Set<Integer> todaySet = toSet(today);
+            Set<Integer> nextSet = toSet(next);
 
-            for (Integer A : todaySet) {
-                Map<Integer, Double> freq = memory.get(A);
+            List<Integer> list = new ArrayList<>(todaySet);
 
-                for (Integer B : nextSet) {
-                    freq.put(B, freq.getOrDefault(B, 0.0) + weight);
+            // 🔥 tạo cặp (A,B)
+            for (int a = 0; a < list.size(); a++) {
+                for (int b = a + 1; b < list.size(); b++) {
+
+                    int A = list.get(a);
+                    int B = list.get(b);
+
+                    int pairKey = encodePair(A, B);
+
+                    memory.putIfAbsent(pairKey, new HashMap<>());
+                    Map<Integer, Double> freq = memory.get(pairKey);
+
+                    for (Integer target : nextSet) {
+                        freq.put(target,
+                                freq.getOrDefault(target, 0.0) + weight);
+                    }
                 }
             }
         }
 
-        // 🔥 convert thành output
-        Map<Integer, List<NumberScoreDto>> result = new HashMap<>();
+        // 🔥 convert → List<PairScoreDto>
+        return memory.entrySet()
+                .stream()
+                .map(entry -> {
 
-        for (int A = 0; A < 100; A++) {
+                    int pairKey = entry.getKey();
+                    Map<Integer, Double> freq = entry.getValue();
 
-            Map<Integer, Double> freq = memory.get(A);
+                    // 🔥 tính score tổng của pair
+                    double totalScore = freq.values()
+                            .stream()
+                            .mapToDouble(Double::doubleValue)
+                            .sum();
 
-            List<NumberScoreDto> sorted = freq.entrySet()
-                    .stream()
-                    .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
-                    .map(e -> new NumberScoreDto(e.getKey(), e.getValue()))
-                    .toList();
+                    // 🔥 sort target numbers
+                    List<NumberScoreDto> numbers = freq.entrySet()
+                            .stream()
+                            .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                            .limit(5)
+                            .map(e -> new NumberScoreDto(e.getKey(), e.getValue()))
+                            .toList();
 
-            result.put(A, sorted);
-        }
-
-        return result;
+                    return new PairScoreDto(pairKey, totalScore, numbers);
+                })
+                // 🔥 sort pair theo score
+                .sorted((a, b) -> Double.compare(b.getScore(), a.getScore()))
+                .toList();
     }
 
-    private Map<Integer, Map<Integer, Double>> initMemory() {
-        Map<Integer, Map<Integer, Double>> m = new HashMap<>();
+    // ===== encode pair =====
 
-        for (int i = 0; i < 100; i++) {
-            Map<Integer, Double> inner = new HashMap<>();
-            for (int j = 0; j < 100; j++) {
-                inner.put(j, 0.0);
-            }
-            m.put(i, inner);
-        }
+    private int encodePair(int a, int b) {
+        int min = Math.min(a, b);
+        int max = Math.max(a, b);
+        return min * 100 + max;
+    }
 
-        return m;
+    // ===== helpers =====
+
+    private Set<Integer> toSet(Result r) {
+        Set<Integer> set = new HashSet<>(r.getNumbers());
+        set.add(r.getSingleNumber());
+        return set;
     }
 
     private double getWeight(long daysDiff) {
+        if (daysDiff <= 7) return W_7D;
         if (daysDiff <= 30) return W_30D;
         if (daysDiff <= 90) return W_90D;
         if (daysDiff <= 180) return W_180D;

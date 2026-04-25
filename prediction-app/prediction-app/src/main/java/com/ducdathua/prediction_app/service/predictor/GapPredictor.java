@@ -9,7 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Component
-public class GapPredictor implements Predictor {
+public class GapPredictor implements Predictor<Map<Integer, List<NumberScoreDto>>>  {
 
     private static final int MAX_GAP = 180;
 

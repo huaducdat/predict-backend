@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 @Component
-public class RepeatPredictor implements Predictor {
+public class RepeatPredictor implements Predictor<Map<Integer, List<NumberScoreDto>>>  {
 
     private static final double W_30D = 0.5;
     private static final double W_90D = 0.3;
