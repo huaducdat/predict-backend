@@ -28,4 +28,7 @@ public class LatestDayStreak {
     public int getCurrentStreak() { return currentStreak; }
     public int getMaxStreak() { return maxStreak; }
     public boolean isAppearedToday() { return appearedToday; }
+    public LocalDate getLastUpdated() {
+        return lastUpdated;
+    }
 }
