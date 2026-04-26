@@ -5,6 +5,7 @@ import com.ducdathua.prediction_app.repository.ResultRepository;
 import com.ducdathua.prediction_app.service.predictor.Predictor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -15,11 +16,14 @@ public class PredictorService {
 
     private final ResultRepository resultRepository;
     private final List<Predictor<?>> predictors;
+    private final PredictionStorageService storageService;
 
     public PredictorService(ResultRepository resultRepository,
-                            List<Predictor<?>> predictors) {
+                            List<Predictor<?>> predictors,
+                            PredictionStorageService storageService) {
         this.resultRepository = resultRepository;
         this.predictors = predictors;
+        this.storageService = storageService;
     }
 
     public Map<String, Object> run() {
@@ -38,6 +42,13 @@ public class PredictorService {
             Object data = p.predict(allResults);
             result.put(p.getName(), data);
         }
+
+        // 🔥 LẤY NGÀY CUỐI
+        LocalDate latestDate =
+                allResults.get(allResults.size() - 1).getDate();
+
+        // 🔥 SAVE
+        storageService.save(latestDate, result);
 
         return result;
     }
