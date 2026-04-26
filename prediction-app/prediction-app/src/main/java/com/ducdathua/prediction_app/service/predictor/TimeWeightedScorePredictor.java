@@ -2,6 +2,7 @@ package com.ducdathua.prediction_app.service.predictor;
 
 import com.ducdathua.prediction_app.dto.NumberScoreDto;
 import com.ducdathua.prediction_app.model.Result;
+import com.ducdathua.prediction_app.service.TimeWeightGlobalService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -10,7 +11,10 @@ import java.util.*;
 
 @Component
 public class TimeWeightedScorePredictor implements Predictor<Map<Integer, List<NumberScoreDto>>>  {
-
+    private final TimeWeightGlobalService globalService;
+    public TimeWeightedScorePredictor(TimeWeightGlobalService globalService) {
+        this.globalService = globalService;
+    }
     private static final int TOP_K = 3;
 
     // 🔥 trọng số (ông có thể chỉnh)
@@ -31,15 +35,19 @@ public class TimeWeightedScorePredictor implements Predictor<Map<Integer, List<N
             return emptyResult();
         }
 
-        // 🔥 sort theo ngày
+        // 🔥 1. build global
+        Map<Integer, List<NumberScoreDto>> global = buildGlobal(allResults);
+
+        // 🔥 2. apply context (today)
+        return applyContext(global, allResults);
+    }
+    public Map<Integer, List<NumberScoreDto>> buildGlobal(List<Result> allResults) {
+
         allResults.sort(Comparator.comparing(Result::getDate));
 
-        // 🔥 lấy ngày cuối
         LocalDate latestDate =
                 allResults.get(allResults.size() - 1).getDate();
 
-
-        // 🔥 memory final
         Map<Integer, Map<Integer, Double>> memory = initMemory();
 
         for (int i = 0; i < allResults.size() - 1; i++) {
@@ -47,12 +55,8 @@ public class TimeWeightedScorePredictor implements Predictor<Map<Integer, List<N
             Result today = allResults.get(i);
             Result next = allResults.get(i + 1);
 
-            LocalDate date = today.getDate();
-
-            long daysDiff = ChronoUnit.DAYS.between(date, latestDate);
-
+            long daysDiff = ChronoUnit.DAYS.between(today.getDate(), latestDate);
             double weight = getWeight(daysDiff);
-
             if (weight == 0) continue;
 
             Set<Integer> todaySet = toSet(today);
@@ -62,38 +66,66 @@ public class TimeWeightedScorePredictor implements Predictor<Map<Integer, List<N
                 Map<Integer, Double> freq = memory.get(source);
 
                 for (Integer target : nextSet) {
-                    freq.put(target, freq.getOrDefault(target, 0.0) + weight);
+                    freq.put(target,
+                            freq.getOrDefault(target, 0.0) + weight);
                 }
             }
         }
 
-        // 🔥 sort + lấy top3
+        // 🔥 convert → topK
         Map<Integer, List<NumberScoreDto>> result = new HashMap<>();
 
         for (int s = 0; s < 100; s++) {
 
             Map<Integer, Double> freq = memory.get(s);
 
-            if (freq.isEmpty()) {
-                result.put(s, List.of());
-                continue;
-            }
-
             List<NumberScoreDto> top = freq.entrySet()
                     .stream()
                     .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
                     .limit(TOP_K)
-                    .map(e -> new NumberScoreDto(
-                            e.getKey(),
-                            e.getValue() // 🔥 giữ nguyên score
-                    ))
+                    .map(e -> new NumberScoreDto(e.getKey(), e.getValue()))
                     .toList();
 
             result.put(s, top);
         }
-
+        globalService.save(latestDate, result);
         return result;
     }
+
+
+    private Map<Integer, List<NumberScoreDto>> applyContext(
+            Map<Integer, List<NumberScoreDto>> global,
+            List<Result> allResults) {
+
+        Result today = allResults.get(allResults.size() - 1);
+        Set<Integer> todaySet = toSet(today);
+
+        Map<Integer, Double> scoreMap = new HashMap<>();
+
+        for (Integer s : todaySet) {
+
+            List<NumberScoreDto> list = global.get(s);
+            if (list == null) continue;
+
+            for (NumberScoreDto dto : list) {
+                scoreMap.put(
+                        dto.getNumber(),
+                        scoreMap.getOrDefault(dto.getNumber(), 0.0) + dto.getScore()
+                );
+            }
+        }
+
+        List<NumberScoreDto> sorted = scoreMap.entrySet()
+                .stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .map(e -> new NumberScoreDto(e.getKey(), e.getValue()))
+                .toList();
+
+        return Map.of(-1, sorted);
+    }
+
+
+
 
     // ===== weight logic =====
 
