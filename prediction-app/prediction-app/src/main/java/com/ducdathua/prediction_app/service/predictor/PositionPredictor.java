@@ -9,7 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Component
-public class PositionPredictor implements Predictor<Map<Integer, List<NumberScoreDto>>>  {
+public class PositionPredictor implements Predictor<Map<Integer, List<NumberScoreDto>>> {
 
     private static final int GROUP_SIZE = 10;
 
@@ -29,11 +29,36 @@ public class PositionPredictor implements Predictor<Map<Integer, List<NumberScor
             return Map.of();
         }
 
-        // ===== SORT =====
         allResults.sort(Comparator.comparing(Result::getDate));
         LocalDate latestDate = allResults.get(allResults.size() - 1).getDate();
 
-        // ===== BUILD MEMORY: group → group =====
+        // 🔥 1. GLOBAL (logic cũ giữ nguyên)
+        Map<Integer, Map<Integer, Double>> memory =
+                buildGlobalMemory(allResults, latestDate);
+
+        Map<Integer, List<NumberScoreDto>> result =
+                convertMemoryToResult(memory);
+
+        // 🔥 2. CONTEXT (mới)
+        Result today = allResults.get(allResults.size() - 1);
+
+        List<NumberScoreDto> contextResult =
+                applyTodayContext(memory, today);
+
+        result.put(-1, contextResult); // 🔥 inject vào
+
+        return result;
+    }
+
+    // =========================================================
+    // GLOBAL MEMORY (KHÔNG ĐỔI)
+    // =========================================================
+
+    public Map<Integer, Map<Integer, Double>> buildGlobalMemory(
+            List<Result> allResults,
+            LocalDate latestDate
+    ) {
+
         Map<Integer, Map<Integer, Double>> memory = new HashMap<>();
 
         for (int i = 0; i < 10; i++) {
@@ -53,8 +78,8 @@ public class PositionPredictor implements Predictor<Map<Integer, List<NumberScor
             double weight = getWeight(days);
             if (weight == 0) continue;
 
-            Set<Integer> todaySet = new HashSet<>(today.getNumbers());
-            Set<Integer> nextSet = new HashSet<>(next.getNumbers());
+            Set<Integer> todaySet = toSet(today);
+            Set<Integer> nextSet = toSet(next);
 
             for (int a : todaySet) {
                 int groupA = a / GROUP_SIZE;
@@ -68,7 +93,17 @@ public class PositionPredictor implements Predictor<Map<Integer, List<NumberScor
             }
         }
 
-        // ===== CONVERT: group → number =====
+        return memory;
+    }
+
+    // =========================================================
+    // CONVERT (KHÔNG ĐỔI)
+    // =========================================================
+
+    public Map<Integer, List<NumberScoreDto>> convertMemoryToResult(
+            Map<Integer, Map<Integer, Double>> memory
+    ) {
+
         Map<Integer, List<NumberScoreDto>> result = new HashMap<>();
 
         for (int groupA = 0; groupA < 10; groupA++) {
@@ -86,11 +121,66 @@ public class PositionPredictor implements Predictor<Map<Integer, List<NumberScor
 
             result.put(groupA, list);
         }
-//        System.out.println(memory);
+
         return result;
     }
 
-    // ===== WEIGHT =====
+    // =========================================================
+    // CONTEXT (MỚI)
+    // =========================================================
+
+    public List<NumberScoreDto> applyTodayContext(
+            Map<Integer, Map<Integer, Double>> memory,
+            Result today
+    ) {
+
+        Set<Integer> todaySet = toSet(today);
+
+        Map<Integer, Double> voteMap = new HashMap<>();
+
+        for (int todayNumber : todaySet) {
+
+            int groupA = todayNumber / GROUP_SIZE;
+
+            Map<Integer, Double> groupScores = memory.get(groupA);
+            if (groupScores == null) continue;
+
+            for (int target = 0; target < 100; target++) {
+
+                int groupB = target / GROUP_SIZE;
+
+                double score = groupScores.getOrDefault(groupB, 0.0);
+
+                voteMap.put(
+                        target,
+                        voteMap.getOrDefault(target, 0.0) + score
+                );
+            }
+        }
+
+        return voteMap.entrySet()
+                .stream()
+                .map(e -> new NumberScoreDto(e.getKey(), e.getValue()))
+                .sorted((a, b) -> Double.compare(b.getScore(), a.getScore()))
+                .toList();
+    }
+
+    // =========================================================
+    // HELPERS
+    // =========================================================
+
+    private Set<Integer> toSet(Result result) {
+        Set<Integer> set = new HashSet<>();
+
+        if (result.getNumbers() != null) {
+            set.addAll(result.getNumbers());
+        }
+
+        set.add(result.getSingleNumber());
+
+        return set;
+    }
+
     private double getWeight(long days) {
         if (days <= 30) return W_30D;
         if (days <= 90) return W_90D;

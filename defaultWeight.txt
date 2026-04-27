@@ -1,0 +1,7 @@
+PAIR_TO_NEXT        30%  // pattern chi tiết nhất
+POSITION            20%  // xu hướng vùng số, ổn định hơn pair
+TIME_WEIGHTED_COUNT 15%  // ưu tiên dữ liệu gần
+RECENT_FREQUENCY    15%  // tần suất gần đây
+STREAK_CONTINUE     10%  // tín hiệu timing
+GAP                  5%  // phụ trợ đảo chiều / khoảng cách
+REPEAT               5%  // dễ nhiễu, nên để thấp
